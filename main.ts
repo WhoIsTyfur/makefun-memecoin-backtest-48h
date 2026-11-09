@@ -5,8 +5,8 @@
 // burst, and that no small group of wallets can crash; builds the stake over consecutive batches
 // (each buy under the per-reply cap of 1% of the curve's real SOL); and holds it until the curve
 // completes, when the replay closes the position at the completing trade. It sells early only when
-// the curve falls a set amount of real SOL below where it was bought, and it sells part of a
-// position that has grown too large a share of the account. A drawdown governor sizes every new
+// the curve falls a set amount of real SOL below where it was bought (or, wider, below its peak),
+// and it sells part of a position that has grown too large a share of the account. A drawdown governor sizes every new
 // stake. A few tiny "filler" round trips early in the run make sure the 20-coin guardrail is met
 // however few real trades the day brings.
 //
@@ -40,6 +40,8 @@ const P = {
   addDropSol: 8,
   /** Floor: sell when the real SOL falls this far below where the position was entered. */
   floorSol: 20,
+  /** ...or this far below the most it has held since: wide, so only a real collapse triggers it. */
+  trailSol: 40,
   /** Sell a position down when it is worth more than this share of equity. */
   trimFrac: 0.35,
   /** Drawdown governor: a new stake is sized so that losing every open position outright would
@@ -147,8 +149,9 @@ interface Trade {
   committed: bigint;
   target: bigint;
   lastBuySlot: number;
-  /** Real SOL in the curve when the position was decided. */
+  /** Real SOL in the curve when the position was decided, and the most seen since. */
   entrySol: number;
+  peakSol: number;
 }
 
 const curves = new Map<string, Curve>();
@@ -348,9 +351,10 @@ function handleBatch(b: Batch): Order[] {
     if (c === undefined || c.complete) continue;
     let t = trades.get(p.mint);
     if (t === undefined) {
-      t = { kind: 'filler', decidedSlot: -1_000_000, selling: false, committed: 0n, target: 0n, lastBuySlot: -1, entrySol: c.sol };
+      t = { kind: 'filler', decidedSlot: -1_000_000, selling: false, committed: 0n, target: 0n, lastBuySlot: -1, entrySol: c.sol, peakSol: c.sol };
       trades.set(p.mint, t);
     }
+    if (c.sol > t.peakSol) t.peakSol = c.sol;
     if (t.selling) continue;
     const amount = BigInt(p.token_amount);
     if (amount === 0n) continue;
@@ -358,8 +362,8 @@ function handleBatch(b: Batch): Order[] {
     let slippage = SELL_SLIPPAGE_BPS;
     if (t.kind === 'filler') {
       if (slot - t.decidedSlot >= P.fillerHold) part = amount;
-    } else if (c.sol < t.entrySol - P.floorSol) {
-      // Floor: the curve gave back too much. Sell everything.
+    } else if (c.sol < t.entrySol - P.floorSol || c.sol < t.peakSol - P.trailSol) {
+      // Floor: the curve gave back too much, from the entry or from its peak. Sell everything.
       part = amount;
       slippage = STOP_SLIPPAGE_BPS;
     } else {
@@ -419,7 +423,7 @@ function handleBatch(b: Batch): Order[] {
       const q = cap < target ? cap : target;
       if (target >= lamports(P.minStake) && q + txFee <= cash && q >= ROUND_TRIP_MIN) {
         send({ side: 'buy', client_id: newId(), mint, quote_lamports: q.toString(), max_slippage_bps: BUY_SLIPPAGE_BPS });
-        trades.set(mint, { kind: 'sprint', decidedSlot: slot, selling: false, committed: q, target, lastBuySlot: slot, entrySol: c.sol });
+        trades.set(mint, { kind: 'sprint', decidedSlot: slot, selling: false, committed: q, target, lastBuySlot: slot, entrySol: c.sol, peakSol: c.sol });
         c.entered = true;
         riskBudget -= target;
         cash -= q + txFee;
@@ -438,7 +442,7 @@ function handleBatch(b: Batch): Order[] {
     if (c.sol < P.fillerMinRq || c.sol > P.fillerMaxRq || cap < fq) continue;
     if (fq + txFee > cash) continue;
     send({ side: 'buy', client_id: newId(), mint, quote_lamports: fq.toString(), max_slippage_bps: FILLER_SLIPPAGE_BPS });
-    trades.set(mint, { kind: 'filler', decidedSlot: slot, selling: false, committed: fq, target: fq, lastBuySlot: slot, entrySol: c.sol });
+    trades.set(mint, { kind: 'filler', decidedSlot: slot, selling: false, committed: fq, target: fq, lastBuySlot: slot, entrySol: c.sol, peakSol: c.sol });
     cash -= fq + txFee;
     open++;
     fillersThisBatch++;

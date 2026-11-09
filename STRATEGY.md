@@ -32,8 +32,8 @@ reaching 40 SOL. The bot enters a coin once, when all of these hold:
 ## When it exits
 
 - **Completion**: the replay closes the position at the completing trade. This is the intended exit.
-- **Floor**: sell everything when the curve's real SOL falls 20 below its level at entry. Graduating
-  curves gave back 5 to 18 SOL on the way; a tighter or trailing stop sold all of them early.
+- **Floor**: sell everything when the curve's real SOL falls 20 below its level at entry, or 40
+  below its peak. Graduating curves gave back up to 32 SOL on the way; tighter stops sold them early.
 - **Trim**: a position worth more than 35% of equity is sold down to 28%. It banks part of a run and
   caps what one coin's collapse can cost.
 
@@ -45,12 +45,12 @@ curves until 24 distinct coins carry a qualifying round trip, about 0.015 SOL in
 ## Evidence (dev window, my replay of the kit's engine)
 
 The replay reproduces the earlier dip-buying entry's graded +3.32 SOL to within the failed-order draw.
-This bot: **about +24.6 SOL net**, +22.6 with every fee doubled, +5.6 without its three best coins,
-maximum drawdown 24%, 31 qualifying coins. Five of seven sprints graduated; two fell to the floor.
+This bot: **about +26.8 SOL net**, +24.7 with every fee doubled, +6.9 without its three best coins,
+maximum drawdown 21%, 31 qualifying coins. Five of seven sprints graduated; two were stopped.
 
-Both halves of the coins split by hash are profitable (+9.0, +15.6). On 17 pseudo-windows (coin
-subsets; halves and quarters of the day run alone) it averages +10 SOL, worst -0.02. Moving any one
-threshold to its neighbours stays positive (+12 to +25 SOL).
+Both halves of the coins split by hash are profitable (+10.0, +16.9). On 17 pseudo-windows (coin
+subsets; halves and quarters of the day run alone) it averages +10.7 SOL and none loses. Moving any
+one threshold to its neighbours stays positive (+12 to +27 SOL).
 
 ## Risks
 

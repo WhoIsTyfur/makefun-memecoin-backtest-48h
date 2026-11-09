@@ -14,8 +14,8 @@ uses no randomness, so two runs give the same bytes.
   (the cap is 100 bps per reply); at most 3 positions. A drawdown governor cuts a new stake to what the
   account could lose outright and still stay within 40% of its peak.
 - **Exit.** Hold to completion: the replay closes the position at the completing trade, the top of the
-  curve. Sell everything if the curve falls 20 SOL of real reserve below the entry; sell a position down
-  when it is worth more than 35% of equity.
+  curve. Sell everything if the curve falls 20 SOL of real reserve below the entry or 40 below its peak;
+  sell a position down when it is worth more than 35% of equity.
 - **Guardrail.** Until 24 distinct coins hold a round trip of at least 0.01 SOL, small 0.012 SOL round
   trips on 3-30 SOL curves fill the count. They cost about 0.015 SOL in all.
 
@@ -23,14 +23,14 @@ uses no randomness, so two runs give the same bytes.
 
 ## Evidence
 On the 24-hour dev window, in a replay written from the kit's engine source (it reproduces the earlier
-version's server-graded +3.32 SOL to within the 2% failed-order draw): **about +24.6 SOL net**, +22.6 SOL
-with every fee doubled and +5.6 SOL without the three best coins. 31 coins carry a qualifying round trip
-and the maximum drawdown is 24%. Seven sprint trades: five graduated, two were sold at the floor.
+version's server-graded +3.32 SOL to within the 2% failed-order draw): **about +26.8 SOL net**, +24.7 SOL
+with every fee doubled and +6.9 SOL without the three best coins. 31 coins carry a qualifying round trip
+and the maximum drawdown is 21%. Seven sprint trades: five graduated, two were stopped.
 
-Both halves of the coins split by a hash of the mint are profitable (+9.0 and +15.6 SOL). On 17
+Both halves of the coins split by a hash of the mint are profitable (+10.0 and +16.9 SOL). On 17
 pseudo-windows (hash subsets of the coins, and each half and quarter of the day run alone from 10 SOL) the
-mean is +10 SOL and the worst -0.02. The first half of the dev day had no winning sprint, so a quiet day
-earns about nothing. An earlier version of this entry bought sharp dips on deep curves (+3.32 SOL); the
+mean is +10.7 SOL and none loses. Nearly all of the dev day's profit came in its second half, so a quiet
+day earns about nothing. An earlier version of this entry bought sharp dips on deep curves (+3.32 SOL); the
 kit's rebuilt copies of the window showed that edge leaning on the window's own coins, and it was replaced.
 
 ## Run it locally
