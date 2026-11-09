@@ -1,60 +1,67 @@
-# Strategy: buy sharp dips on deep curves, sell the bounce
+# Strategy: ride fast, broadly held curves to graduation
 
 ## What it trades on
 
-Only pump.fun bonding curves holding **at least 50 SOL of real reserve**: the deep end, close to
-graduation (about 85 SOL). After the last trade of each slot the bot compares the price with the
-price 4 slots earlier; a drop of **10% or more** is a dip.
+A pump.fun bonding curve completes ("graduates") at about 85 SOL of real reserve, and the replay then
+closes any position at the completing trade's reserves: the top of the curve, with none of the bot's
+own price impact. From 39 SOL of real reserve to completion the price rises about 2.8 times. So the
+whole question is which curves get there.
 
-Why only this: on the dev window I measured net-of-fee forward returns (filled at slot s+2) for
-momentum, crash rebounds, launch sniping, riding curves to completion, crowd milestones and a 2-D
-search over a dozen features. Nearly everything lost money: memecoins drift down, and buying strength
-is worst. One family stayed positive under every check: a sharp, short dip on a deep curve. A big
-sell into a curve with plenty of SOL and live buyers tends to be absorbed within a minute, and a curve
-that completes is closed by the replay at the completing trade's reserves.
+On the dev window 35 of 1,222 coins graduated, but about 26 of them were bundled to completion in
+their creation slot, which a 2-slot latency cannot trade. Seven graduations were tradable, and at
+their first crossing of 40 SOL they looked alike. The bot enters a coin once, when all of these hold:
 
-Checks before trusting it:
-- **Plateau, not peak**: the parameters sit mid-plateau (real SOL 45-55, dip 9-11%, lookback 3-5
-  slots, hold 80-120 slots); 79 of those 81 configurations are profitable.
-- **Holdout by coin**: each half of a hash split of the coins is profitable alone.
-- **Holdout by time**: the two busy 6-hour quarters are each profitable alone; the two quiet ones
-  had few trades and lost a few hundredths of a SOL.
-- An early crash-rebound rule looked brilliant until I found a lookahead bug in my study (a lookup
-  that silently returned a coin's last trade); it was dropped.
+- **Depth**: real reserve between 39 and 60 SOL.
+- **Sprint**: the coin is 40 to 120 slots old. It filled fast, but not in one burst. Every coin that
+  got this deep in under 40 slots failed; slow fillers mostly stalled.
+- **Breadth**: at least 30 distinct wallets have bought.
+- **Launch group**: the wallets that bought in the creation slot or the next one could take at most
+  16 SOL out of the curve by selling everything they still hold. Every one-slot collapse in the data
+  (real SOL going 74 to 5 between two slots) was a bundled launch whose group still held 40 SOL or
+  more; no stop can fill inside one slot, so these must be avoided at entry.
+- **No whale**: no single wallet could take more than 11 SOL out by selling.
+
+The bot keeps each wallet's net token balance per coin from the trade events to measure the last two.
 
 ## How it sizes positions
 
-- A dip entry buys in **up to 3 tranches on consecutive batches**, each just under the per-reply cap
-  (95 of the allowed 100 bps of the curve's real SOL): about 0.5-0.8 SOL per tranche, at most 3 SOL
-  per position.
-- At most 5 open positions, one buy per coin per reply, and only with cash not already committed to
-  orders in flight.
-- Buys accept 15% slippage; sells accept 50%, so an exit is not refused when the price moves during
-  the two slots of latency.
+- **Stake**: 35% of equity per coin, built over consecutive batches, each buy just under the per-reply
+  cap (95 of the allowed 100 bps of the curve's real SOL). It stops adding above 70 SOL or once the
+  curve is 8 SOL under the entry.
+- **Drawdown governor**: a new stake is cut to what the account could lose outright, with every open
+  position going to zero, and still stay within 40% of its peak equity. Under 0.3 SOL, no trade.
+- At most 3 positions at once, one entry per coin.
 
 ## When it exits
 
-- **Take profit**: once the position would sell for **5% over its cost** (valued at the batch's
-  marks, which include the bot's own impact, after the sell's curve fee).
-- **Time stop**: **100 slots** (about 40 s) after the entry decision at the latest. The bounce, when it
-  comes, is quick; longer holds turned the edge negative.
-- **Completion**: if the curve graduates first, the replay closes the position.
-- After an exit the coin is ignored for 30 slots.
+- **Completion**: the replay closes the position at the completing trade. This is the intended exit.
+- **Floor**: sell everything when the curve's real SOL falls 20 SOL below its level at entry.
+  Graduating curves gave back 5 to 18 SOL on the way; a tighter stop, or one trailing from the peak,
+  sold every one of them early.
+- **Trim**: a position worth more than 35% of equity is sold down to 28%. This banks part of a run and
+  caps what one coin's collapse can cost; without it one position took equity 45% off its marked peak.
 
-## Guardrails
+## Guardrail filler
 
-The dip rule trades about 15-20 coins a day, so a **filler** module makes 0.012 SOL round trips
-(held 10 slots) on 3-30 SOL curves until 24 distinct coins carry a qualifying round trip. It never
-takes the last two position slots and costs about 0.015 SOL in all.
+Sprints are rare (7 on the dev window), so the bot also makes 0.012 SOL round trips, held 10 slots, on
+3-30 SOL curves until 24 distinct coins carry a qualifying round trip. It leaves two position slots
+free and costs about 0.015 SOL in all.
 
-## Dev window (local grade)
+## Evidence (dev window, my replay of the kit's engine)
 
-+3.32 SOL net (90% interval +0.88 .. +6.39), +1.37 SOL with every fee doubled, +1.00 SOL without its
-three best coins; 39 coins with qualifying round trips; maximum drawdown 7.9%. The house bots lost on
-the same window (reversion -3.71, sniper -0.50, momentum -9.47 SOL).
+The replay reproduces the earlier dip-buying entry's graded +3.32 SOL to within the failed-order draw.
+This bot: **about +24.6 SOL net**, +22.6 with every fee doubled, +5.6 without its three best coins,
+maximum drawdown 24%, 31 coins with qualifying round trips. Five of its seven sprints graduated
+(+2.4 to +6 SOL each); two fell to the floor.
+
+Checks: both halves of the coins split by hash are profitable (+9.0, +15.6). Re-run on 17
+pseudo-windows (hash subsets of the coins, each half and quarter of the day as a fresh 10 SOL run) it
+averages +10 SOL, worst -0.02, worst drawdown 32%. Every one-at-a-time change of a threshold to its
+neighbours stays positive (+12 to +25 SOL).
 
 ## Risks
 
-A thin edge on about 45 positions a day. The kit's block-surrogate copies rebuild each coin from other
-coins' flow, removing the dynamics this relies on; there it loses a median 1.86 SOL (worst 3.35): the
-downside of a day without the pattern. Deterministic; standard library only.
+Seven trades is a small sample and the thresholds were chosen on it. The first half of the dev day had
+no winning sprint: a day with none makes about nothing, and a day of failures loses 35-50% of each
+stake until the governor stops new entries. A holder moving tokens off the curve is invisible to the
+launch-group and whale measures.
