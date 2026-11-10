@@ -33,7 +33,7 @@ const P = {
   /** Skip a coin whose largest holder could pull more than this many SOL out by selling. */
   maxWhaleSol: 11,
   /** Stake per position: this share of equity, never under minStake SOL (smaller: no trade). */
-  stakeFrac: 0.35,
+  stakeFrac: 0.45,
   minStake: 0.3,
   /** Keep building the stake while the real SOL is at most addRqMax and at most addDropSol under the entry. */
   addRqMax: 70,
@@ -43,7 +43,7 @@ const P = {
   /** ...or this far below the most it has held since: wide, so only a real collapse triggers it. */
   trailSol: 40,
   /** Sell a position down when it is worth more than this share of equity. */
-  trimFrac: 0.35,
+  trimFrac: 0.45,
   /** Drawdown governor: a new stake is sized so that losing every open position outright would
    *  still leave equity within ddLine of its peak. */
   ddLine: 0.4,
